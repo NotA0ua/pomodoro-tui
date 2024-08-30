@@ -128,6 +128,22 @@ impl App {
                     _ => {}
                 },
 
+                KeyCode::Backspace => {
+                    if let Screens::Pomodoro = self.current_screen {
+                        self.elapsed_seconds = 0;
+                    }
+                }
+
+                KeyCode::Enter => {
+                    match self.current_type {
+                        Pomodoros::Pomodoro => self.current_type = Pomodoros::ShortBreak,
+                        Pomodoros::ShortBreak => self.current_type = Pomodoros::LongBreak,
+                        Pomodoros::LongBreak => self.current_type = Pomodoros::Pomodoro,
+                    }
+                    self.elapsed_seconds = 0;
+                    self.is_pomodoro_running = false;
+                }
+
                 _ => {}
             }
         }
