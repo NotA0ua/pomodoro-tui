@@ -271,6 +271,7 @@ impl App {
             }
             Pomodoros::ShortBreak => {
                 if self.elapsed_seconds >= self.short_break_time {
+                    play_timer_sound();
                     self.short_breaks += 1;
                     self.elapsed_seconds = 0;
                     self.current_type = Pomodoros::Pomodoro;
@@ -278,6 +279,7 @@ impl App {
             }
             Pomodoros::LongBreak => {
                 if self.elapsed_seconds >= self.long_break_time {
+                    play_timer_sound();
                     self.long_breaks += 1;
                     self.elapsed_seconds = 0;
                     self.current_type = Pomodoros::Pomodoro;
