@@ -145,10 +145,13 @@ impl App {
             .border_type(BorderType::Rounded)
             .style(Style::default());
 
-        let title = Paragraph::new(Text::styled("Pomodoro timer", Style::default()))
-            .alignment(Alignment::Center)
-            .centered()
-            .block(title_block);
+        let title = Paragraph::new(Text::styled(
+            "Pomodoro timer",
+            Style::default().fg(Color::Yellow),
+        ))
+        .alignment(Alignment::Center)
+        .centered()
+        .block(title_block);
 
         frame.render_widget(title, chunks[0]);
 
@@ -186,12 +189,14 @@ impl App {
 
                 let pomodoro_text = Text::styled(
                     format!(
-                        "Pomdoros: {}\nShort breaks: {}\nLong breaks: {}\nElapsed time: {}s\n{}\n{}",
+                        "Pomdoros: {}\nShort breaks: {}\nLong breaks: {}\nElapsed time: {}m {}s\n{}\n{}",
                         self.pomdoros,
                         self.short_breaks,
                         self.long_breaks,
-                        self.elapsed_seconds,
-                        "•".repeat(self.elapsed_seconds % 5),
+                        // (self.elapsed_seconds / 60) as usize,
+                        self.elapsed_seconds / 60,
+                        self.elapsed_seconds%60,
+                        "•".repeat(self.elapsed_seconds % 10),
                         {
                             if self.is_pomodoro_running == false {
                                 "Paused"
@@ -213,7 +218,7 @@ impl App {
             Screens::Quit => {
                 let screen_block = Block::default()
                     .borders(Borders::NONE)
-                    .style(Style::default().bg(Color::DarkGray));
+                    .style(Style::default());
 
                 let quit_text = Line::styled("Do you really want to quit?", Style::default());
                 let quit_keys_text = Line::styled("(q/Esc)", Style::default().fg(Color::Red));
