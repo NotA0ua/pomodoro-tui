@@ -14,7 +14,7 @@ use ratatui::{
 };
 
 use crate::{
-    enums::{pomodoros::Pomodoros, screens::Screens},
+    enums::{pomodoros::Pomodoros, screens::Screens, time::Time},
     sound::play_timer_sound,
     ui::centered_rect,
 };
@@ -24,40 +24,27 @@ pub struct App {
     is_pomodoro_running: bool,
     current_screen: Screens,
     current_type: Pomodoros,
-    pomodoro_time: usize,
-    short_break_time: usize,
-    long_break_time: usize,
+    pomodoro_seconds: usize,
+    short_break_seconds: usize,
+    long_break_seconds: usize,
+    short_breaks_before_long: usize,
     pomdoros: usize,
     short_breaks: usize,
     long_breaks: usize,
-    short_breaks_before_long: usize,
     elapsed_seconds: usize,
 }
 
 impl Default for App {
     fn default() -> Self {
-        App {
-            is_running: true,
-            is_pomodoro_running: false,
-            current_screen: Screens::Main,
-            current_type: Pomodoros::Pomodoro,
-            pomodoro_time: 20 * 60,
-            short_break_time: 5 * 60,
-            long_break_time: 15 * 60,
-            pomdoros: 0,
-            short_breaks: 0,
-            long_breaks: 0,
-            short_breaks_before_long: 2,
-            elapsed_seconds: 0,
-        }
+        Self::new(Time::Minutes(25), Time::Minutes(5), Time::Minutes(15), 2)
     }
 }
 
 impl App {
     pub fn new(
-        pomodoro_time: usize,
-        short_break_time: usize,
-        long_break_time: usize,
+        pomodoro_time: Time,
+        short_break_time: Time,
+        long_break_time: Time,
         short_breaks_before_long: usize,
     ) -> Self {
         App {
@@ -65,13 +52,13 @@ impl App {
             is_pomodoro_running: false,
             current_screen: Screens::Main,
             current_type: Pomodoros::Pomodoro,
-            pomodoro_time,
-            short_break_time,
-            long_break_time,
+            pomodoro_seconds: pomodoro_time.as_seconds(),
+            short_break_seconds: short_break_time.as_seconds(),
+            long_break_seconds: long_break_time.as_seconds(),
+            short_breaks_before_long,
             pomdoros: 0,
             short_breaks: 0,
             long_breaks: 0,
-            short_breaks_before_long,
             elapsed_seconds: 0,
         }
     }
@@ -144,6 +131,13 @@ impl App {
                     self.is_pomodoro_running = false;
                 }
 
+                KeyCode::Left => match self.current_screen {
+                    Screens::Settings => {
+                        
+                    }
+                    _ => {}
+                }
+
                 _ => {}
             }
         }
@@ -192,6 +186,7 @@ impl App {
 
                 frame.render_widget(main_paragraph, chunks[1]);
             }
+
             Screens::Pomodoro => {
                 let screen_block = Block::default()
                     .title(match self.current_type {
@@ -209,14 +204,13 @@ impl App {
                         self.pomdoros,
                         self.short_breaks,
                         self.long_breaks,
-                        // (self.elapsed_seconds / 60) as usize,
                         self.elapsed_seconds / 60,
-                        self.elapsed_seconds%60,
-                        "•".repeat(self.elapsed_seconds % 10),
+                        self.elapsed_seconds % 60,
+                        "•".repeat((self.elapsed_seconds % 10) * 2 + 1),
                         {
                             if self.is_pomodoro_running == false {
                                 "Paused"
-                            }else {
+                            } else {
                                 ""
                             }
                         }
@@ -231,6 +225,11 @@ impl App {
 
                 frame.render_widget(pomodoro_paragraph, chunks[1]);
             }
+
+            Screens::Settings => {
+
+            }
+
             Screens::Quit => {
                 let screen_block = Block::default()
                     .borders(Borders::NONE)
@@ -257,12 +256,14 @@ impl App {
         }
         match self.current_type {
             Pomodoros::Pomodoro => {
-                if self.elapsed_seconds >= self.pomodoro_time {
-                    play_timer_sound();
-                    self.pomdoros += 1;
+                if self.elapsed_seconds >= self.pomodoro_seconds {
                     self.elapsed_seconds = 0;
+                    self.pomdoros += 1;
+                    play_timer_sound();
 
-                    if self.short_breaks == self.short_breaks_before_long {
+                    if (self.short_breaks % self.short_breaks_before_long) == 0
+                        && self.short_breaks != 0
+                    {
                         self.current_type = Pomodoros::LongBreak;
                         return;
                     }
@@ -270,18 +271,20 @@ impl App {
                 }
             }
             Pomodoros::ShortBreak => {
-                if self.elapsed_seconds >= self.short_break_time {
-                    play_timer_sound();
-                    self.short_breaks += 1;
+                if self.elapsed_seconds >= self.short_break_seconds {
                     self.elapsed_seconds = 0;
+                    self.short_breaks += 1;
+                    play_timer_sound();
+
                     self.current_type = Pomodoros::Pomodoro;
                 }
             }
             Pomodoros::LongBreak => {
-                if self.elapsed_seconds >= self.long_break_time {
-                    play_timer_sound();
-                    self.long_breaks += 1;
+                if self.elapsed_seconds >= self.long_break_seconds {
                     self.elapsed_seconds = 0;
+                    self.long_breaks += 1;
+                    play_timer_sound();
+
                     self.current_type = Pomodoros::Pomodoro;
                 }
             }
