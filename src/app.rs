@@ -4,17 +4,11 @@ use std::{
 };
 
 use ratatui::{
-    crossterm::event::{self, Event, KeyCode, KeyEventKind},
-    layout::{Alignment, Constraint, Direction, Layout},
-    prelude::Backend,
-    style::{Color, Style},
-    text::{Line, Span, Text},
-    widgets::{Block, BorderType, Borders, Paragraph},
-    Frame, Terminal,
+    Frame, Terminal, crossterm::event::{self, Event, KeyCode, KeyEventKind}, layout::{Alignment, Constraint, Direction, Layout}, prelude::Backend, style::{Color, Style, Stylize}, symbols, text::{Line, Span, Text}, widgets::{Block, BorderType, Borders, Paragraph, Tabs}
 };
 
 use crate::{
-    enums::{pomodoros::Pomodoros, screens::Screens, time::Time},
+    enums::{pomodoros::Pomodoros, screens::Screens, settings::Settings, time::Time},
     sound::play_timer_sound,
     ui::centered_rect,
 };
@@ -22,15 +16,23 @@ use crate::{
 pub struct App {
     is_running: bool,
     is_pomodoro_running: bool,
+
     current_screen: Screens,
+    last_screen: Option<Screens>,
+
     current_type: Pomodoros,
+    current_setting: Settings,
+
     pomodoro_seconds: usize,
     short_break_seconds: usize,
     long_break_seconds: usize,
+
     short_breaks_before_long: usize,
+
     pomdoros: usize,
     short_breaks: usize,
     long_breaks: usize,
+
     elapsed_seconds: usize,
 }
 
@@ -51,7 +53,9 @@ impl App {
             is_running: true,
             is_pomodoro_running: false,
             current_screen: Screens::Main,
+            last_screen: Some(Screens::Main),
             current_type: Pomodoros::Pomodoro,
+            current_setting: Settings::PomodoroSeconds,
             pomodoro_seconds: pomodoro_time.as_seconds(),
             short_break_seconds: short_break_time.as_seconds(),
             long_break_seconds: long_break_time.as_seconds(),
@@ -89,8 +93,12 @@ impl App {
                 KeyCode::Char('q') => {
                     match self.current_screen {
                         Screens::Quit => self.is_running = false,
-                        Screens::Pomodoro => self.is_pomodoro_running = false,
-                        _ => {}
+                        Screens::Pomodoro => {
+                            self.is_pomodoro_running = false;
+                            self.last_screen = Some(Screens::Pomodoro)
+                        }
+                        Screens::Main => self.last_screen = Some(Screens::Main),
+                        Screens::Settings => self.last_screen = Some(Screens::Settings),
                     }
                     self.current_screen = Screens::Quit;
                 }
@@ -109,8 +117,12 @@ impl App {
                         self.is_pomodoro_running = false;
                         self.current_screen = Screens::Main;
                     }
-                    Screens::Quit => {
-                        self.current_screen = Screens::Main;
+                    Screens::Quit | Screens::Settings => {
+                        if let Some(last_screen) = self.last_screen.take() {
+                            self.current_screen = last_screen;
+                        } else {
+                            self.current_screen = Screens::Main;
+                        }
                     }
                     _ => {}
                 },
@@ -131,12 +143,23 @@ impl App {
                     self.is_pomodoro_running = false;
                 }
 
-                KeyCode::Left => match self.current_screen {
-                    Screens::Settings => {
-                        
+                KeyCode::Char('s') => match self.current_screen {
+                    Screens::Main => {
+                        self.current_screen = Screens::Settings;
+                        self.last_screen = Some(Screens::Main);
+                    }
+                    Screens::Pomodoro => {
+                        self.current_screen = Screens::Settings;
+                        self.last_screen = Some(Screens::Pomodoro);
+                        self.is_pomodoro_running = false;
                     }
                     _ => {}
-                }
+                },
+
+                KeyCode::Left => match self.current_screen {
+                    Screens::Settings => {}
+                    _ => {}
+                },
 
                 _ => {}
             }
@@ -194,6 +217,7 @@ impl App {
                         Pomodoros::ShortBreak => "Short break",
                         Pomodoros::LongBreak => "Long break",
                     })
+                    .title_alignment(Alignment::Center)
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
                     .style(Style::default());
@@ -227,7 +251,27 @@ impl App {
             }
 
             Screens::Settings => {
+                let screen_block = Block::default()
+                    .title("Settings")
+                    .title_alignment(Alignment::Center)
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .style(Style::default());
 
+                let tabs = Tabs::new(vec!["Tab1", "Tab2", "Tab3", "Tab4"])
+                    .block(screen_block)
+                    .style(Style::default().white())
+                    .highlight_style(Style::default().yellow())
+                    .select(2)
+                    .divider(symbols::DOT)
+                    .padding("->", "<-");
+
+                // let pomodoro_paragraph = Paragraph::new(settings_text)
+                //     .style(Style::default())
+                //     .centered()
+                //     .block(screen_block);
+
+                frame.render_widget(tabs, chunks[1]);
             }
 
             Screens::Quit => {
