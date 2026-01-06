@@ -4,36 +4,47 @@ use std::{
 };
 
 use ratatui::{
-    Frame, Terminal, crossterm::event::{self, Event, KeyCode, KeyEventKind}, layout::{Alignment, Constraint, Direction, Layout}, prelude::Backend, style::{Color, Style, Stylize}, symbols, text::{Line, Span, Text}, widgets::{Block, BorderType, Borders, Paragraph, Tabs}
+    crossterm::event::{self, Event, KeyCode, KeyEventKind},
+    layout::{Alignment, Constraint, Direction, Layout},
+    prelude::Backend,
+    style::{Color, Modifier, Style, Stylize},
+    symbols,
+    text::{Line, Text},
+    widgets::{Block, BorderType, Borders, Paragraph, Tabs},
+    Frame, Terminal,
 };
+use strum::IntoEnumIterator;
 
 use crate::{
     enums::{pomodoros::Pomodoros, screens::Screens, settings::Settings, time::Time},
+    screens::{
+        pomodoro_screen::render_pomodoro, quit_screen::render_quit,
+        settings_screen::render_settings, tabs_screen::render_tabs,
+    },
     sound::play_timer_sound,
-    ui::centered_rect,
 };
 
 pub struct App {
-    is_running: bool,
-    is_pomodoro_running: bool,
+    pub is_running: bool,
+    pub is_pomodoro_running: bool,
 
-    current_screen: Screens,
-    last_screen: Option<Screens>,
+    pub current_screen: Screens,
+    pub last_screen: Option<Screens>,
 
-    current_type: Pomodoros,
-    current_setting: Settings,
+    pub current_type: Pomodoros,
+    pub current_setting: Settings,
 
-    pomodoro_seconds: usize,
-    short_break_seconds: usize,
-    long_break_seconds: usize,
+    pub pomodoro_seconds: usize,
+    pub short_break_seconds: usize,
+    pub long_break_seconds: usize,
 
-    short_breaks_before_long: usize,
+    pub short_breaks_before_long: usize,
 
-    pomdoros: usize,
-    short_breaks: usize,
-    long_breaks: usize,
+    pub pomdoros: usize,
+    pub short_breaks: usize,
+    pub long_breaks: usize,
 
-    elapsed_seconds: usize,
+    pub elapsed_seconds: usize,
 }
 
 impl Default for App {
@@ -52,8 +63,8 @@ impl App {
         App {
             is_running: true,
             is_pomodoro_running: false,
-            current_screen: Screens::Main,
-            last_screen: Some(Screens::Main),
+            current_screen: Screens::Pomodoro,
+            last_screen: None,
             current_type: Pomodoros::Pomodoro,
             current_setting: Settings::PomodoroSeconds,
             pomodoro_seconds: pomodoro_time.as_seconds(),
@@ -97,31 +108,23 @@ impl App {
                             self.is_pomodoro_running = false;
                             self.last_screen = Some(Screens::Pomodoro)
                         }
-                        Screens::Main => self.last_screen = Some(Screens::Main),
                         Screens::Settings => self.last_screen = Some(Screens::Settings),
+                        Screens::Stats => self.last_screen = Some(Screens::Stats),
                     }
                     self.current_screen = Screens::Quit;
                 }
 
                 KeyCode::Char(' ') => match self.current_screen {
-                    Screens::Main => {
-                        self.current_screen = Screens::Pomodoro;
-                        self.is_pomodoro_running = true;
-                    }
                     Screens::Pomodoro => self.is_pomodoro_running = !self.is_pomodoro_running,
                     _ => {}
                 },
 
                 KeyCode::Esc => match self.current_screen {
-                    Screens::Pomodoro => {
-                        self.is_pomodoro_running = false;
-                        self.current_screen = Screens::Main;
-                    }
-                    Screens::Quit | Screens::Settings => {
+                    Screens::Quit => {
                         if let Some(last_screen) = self.last_screen.take() {
                             self.current_screen = last_screen;
                         } else {
-                            self.current_screen = Screens::Main;
+                            self.current_screen = Screens::Pomodoro;
                         }
                     }
                     _ => {}
@@ -133,34 +136,12 @@ impl App {
                     }
                 }
 
-                KeyCode::Enter => {
-                    match self.current_type {
-                        Pomodoros::Pomodoro => self.current_type = Pomodoros::ShortBreak,
-                        Pomodoros::ShortBreak => self.current_type = Pomodoros::LongBreak,
-                        Pomodoros::LongBreak => self.current_type = Pomodoros::Pomodoro,
-                    }
-                    self.elapsed_seconds = 0;
-                    self.is_pomodoro_running = false;
+                KeyCode::Tab => {
+                    self.current_screen = self.current_screen.next();
                 }
-
-                KeyCode::Char('s') => match self.current_screen {
-                    Screens::Main => {
-                        self.current_screen = Screens::Settings;
-                        self.last_screen = Some(Screens::Main);
-                    }
-                    Screens::Pomodoro => {
-                        self.current_screen = Screens::Settings;
-                        self.last_screen = Some(Screens::Pomodoro);
-                        self.is_pomodoro_running = false;
-                    }
-                    _ => {}
-                },
-
-                KeyCode::Left => match self.current_screen {
-                    Screens::Settings => {}
-                    _ => {}
-                },
-
+                KeyCode::BackTab => {
+                    self.current_screen = self.current_screen.previous();
+                }
                 _ => {}
             }
         }
@@ -173,124 +154,13 @@ impl App {
             .constraints([Constraint::Length(3), Constraint::Min(1)])
             .split(frame.area());
 
-        let title_block = Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .style(Style::default());
-
-        let title = Paragraph::new(Text::styled(
-            "Pomodoro timer",
-            Style::default().fg(Color::Yellow),
-        ))
-        .alignment(Alignment::Center)
-        .centered()
-        .block(title_block);
-
-        frame.render_widget(title, chunks[0]);
+        render_tabs(self, frame, chunks[0]);
 
         match self.current_screen {
-            Screens::Main => {
-                let screen_block = Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .style(Style::default());
-
-                let main_span_1 = Span::styled("Press", Style::default());
-                let main_key_span = Span::styled(" Space ", Style::default().fg(Color::Red));
-                let main_span_2 = Span::styled("to start round", Style::default());
-
-                let main_text =
-                    Text::from(Line::from(vec![main_span_1, main_key_span, main_span_2]));
-
-                let main_paragraph = Paragraph::new(main_text)
-                    .style(Style::default())
-                    .centered()
-                    .block(screen_block);
-
-                frame.render_widget(main_paragraph, chunks[1]);
-            }
-
-            Screens::Pomodoro => {
-                let screen_block = Block::default()
-                    .title(match self.current_type {
-                        Pomodoros::Pomodoro => "Pomodoro",
-                        Pomodoros::ShortBreak => "Short break",
-                        Pomodoros::LongBreak => "Long break",
-                    })
-                    .title_alignment(Alignment::Center)
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .style(Style::default());
-
-                let pomodoro_text = Text::styled(
-                    format!(
-                        "Pomdoros: {}\nShort breaks: {}\nLong breaks: {}\nElapsed time: {}m {}s\n{}\n{}",
-                        self.pomdoros,
-                        self.short_breaks,
-                        self.long_breaks,
-                        self.elapsed_seconds / 60,
-                        self.elapsed_seconds % 60,
-                        "•".repeat((self.elapsed_seconds % 10) * 2 + 1),
-                        {
-                            if self.is_pomodoro_running == false {
-                                "Paused"
-                            } else {
-                                ""
-                            }
-                        }
-                    ),
-                    Style::default(),
-                );
-
-                let pomodoro_paragraph = Paragraph::new(pomodoro_text)
-                    .style(Style::default())
-                    .centered()
-                    .block(screen_block);
-
-                frame.render_widget(pomodoro_paragraph, chunks[1]);
-            }
-
-            Screens::Settings => {
-                let screen_block = Block::default()
-                    .title("Settings")
-                    .title_alignment(Alignment::Center)
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .style(Style::default());
-
-                let tabs = Tabs::new(vec!["Tab1", "Tab2", "Tab3", "Tab4"])
-                    .block(screen_block)
-                    .style(Style::default().white())
-                    .highlight_style(Style::default().yellow())
-                    .select(2)
-                    .divider(symbols::DOT)
-                    .padding("->", "<-");
-
-                // let pomodoro_paragraph = Paragraph::new(settings_text)
-                //     .style(Style::default())
-                //     .centered()
-                //     .block(screen_block);
-
-                frame.render_widget(tabs, chunks[1]);
-            }
-
-            Screens::Quit => {
-                let screen_block = Block::default()
-                    .borders(Borders::NONE)
-                    .style(Style::default());
-
-                let quit_text = Line::styled("Do you really want to quit?", Style::default());
-                let quit_keys_text = Line::styled("(q/Esc)", Style::default().fg(Color::Red));
-
-                let quit_paragraph = Paragraph::new(Text::from(vec![quit_text, quit_keys_text]))
-                    .style(Style::default())
-                    .centered()
-                    .block(screen_block);
-
-                let area = centered_rect(60, 25, frame.area());
-
-                frame.render_widget(quit_paragraph, area);
-            }
+            Screens::Pomodoro => render_pomodoro(self, frame, chunks[1]),
+            Screens::Settings => render_settings(self, frame, chunks[1]),
+            Screens::Quit => render_quit(frame),
+            Screens::Stats => {},
         }
     }
 
@@ -305,7 +175,7 @@ impl App {
                     self.pomdoros += 1;
                     play_timer_sound();
 
-                    if (self.short_breaks % self.short_breaks_before_long) == 0
+                    if (self.short_breaks % (self.short_breaks_before_long + 1)) == 0
                         && self.short_breaks != 0
                     {
                         self.current_type = Pomodoros::LongBreak;

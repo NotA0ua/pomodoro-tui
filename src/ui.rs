@@ -1,7 +1,7 @@
 use ratatui::prelude::*;
 
+/// Make a centered Rect from given with x and y percents of it.
 pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    // Cut the given rectangle into three vertical pieces
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -11,7 +11,6 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         ])
         .split(r);
 
-    // Then cut the middle vertical piece into three width-wise pieces
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
