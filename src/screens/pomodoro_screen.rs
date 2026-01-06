@@ -29,14 +29,19 @@ pub fn render_pomodoro(pomodoro: &App, frame: &mut Frame, chunks: Rect) {
     let padding =
         (chunks.height as usize - 5 - if pomodoro.is_pomodoro_running { 0 } else { 1 }) / 2;
 
+    let ticker = "•".repeat((pomodoro.elapsed_seconds % 10) * 2 + 1);
+    let close_ticker = if pomodoro.elapsed_seconds % 10 > 7 {"•"} else {""};
+
     let pomodoro_text = Text::styled(
         format!(
-            "{}{}\n{:02}:{:02}\n{}\n{}",
+            "{}{}\n{}      {:02}:{:02}      {}\n{}\n{}",
             "\n".repeat(padding),
-            "•".repeat((pomodoro.elapsed_seconds % 10) * 2 + 1),
+            ticker,
+            close_ticker,
             pomodoro.elapsed_seconds / 60,
             pomodoro.elapsed_seconds % 60,
-            "•".repeat((pomodoro.elapsed_seconds % 10) * 2 + 1),
+            close_ticker,
+            ticker,
             {
                 if pomodoro.is_pomodoro_running == false {
                     "⏸"
