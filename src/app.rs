@@ -18,7 +18,7 @@ use strum::IntoEnumIterator;
 use crate::{
     enums::{pomodoros::Pomodoros, screens::Screens, settings::Settings, time::Time},
     screens::{
-        pomodoro_screen::render_pomodoro, quit_screen::render_quit,
+        info_screen::render_info, pomodoro_screen::render_pomodoro, quit_screen::render_quit,
         settings_screen::render_settings, tabs_screen::render_tabs,
     },
     sound::play_timer_sound,
@@ -29,7 +29,7 @@ pub struct App {
     pub is_pomodoro_running: bool,
 
     pub current_screen: Screens,
-    pub last_screen: Option<Screens>,
+    pub last_screen: Screens,
 
     pub current_type: Pomodoros,
     pub current_setting: Settings,
@@ -64,7 +64,7 @@ impl App {
             is_running: true,
             is_pomodoro_running: false,
             current_screen: Screens::Pomodoro,
-            last_screen: None,
+            last_screen: Screens::Pomodoro,
             current_type: Pomodoros::Pomodoro,
             current_setting: Settings::PomodoroSeconds,
             pomodoro_seconds: pomodoro_time.as_seconds(),
@@ -101,41 +101,27 @@ impl App {
                 return Ok(());
             }
             match key.code {
-                KeyCode::Char('q') => {
-                    match self.current_screen {
-                        Screens::Quit => self.is_running = false,
-                        Screens::Pomodoro => {
-                            self.is_pomodoro_running = false;
-                            self.last_screen = Some(Screens::Pomodoro)
-                        }
-                        Screens::Settings => self.last_screen = Some(Screens::Settings),
-                        Screens::Stats => self.last_screen = Some(Screens::Stats),
-                    }
-                    self.current_screen = Screens::Quit;
-                }
-
                 KeyCode::Char(' ') => match self.current_screen {
                     Screens::Pomodoro => self.is_pomodoro_running = !self.is_pomodoro_running,
                     _ => {}
                 },
-
-                KeyCode::Esc => match self.current_screen {
-                    Screens::Quit => {
-                        if let Some(last_screen) = self.last_screen.take() {
-                            self.current_screen = last_screen;
-                        } else {
-                            self.current_screen = Screens::Pomodoro;
-                        }
+                KeyCode::Char('q') => {
+                    if let Screens::Quit = self.current_screen {
+                        self.is_running = false;
                     }
-                    _ => {}
-                },
-
+                    self.last_screen = self.current_screen;
+                    self.current_screen = Screens::Quit;
+                }
+                KeyCode::Esc => {
+                    if let Screens::Quit = self.current_screen {
+                        self.current_screen = self.last_screen;
+                    }
+                }
                 KeyCode::Backspace => {
                     if let Screens::Pomodoro = self.current_screen {
                         self.elapsed_seconds = 0;
                     }
                 }
-
                 KeyCode::Tab => {
                     self.current_screen = self.current_screen.next();
                 }
@@ -151,16 +137,21 @@ impl App {
     fn draw_ui(&mut self, frame: &mut Frame) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Min(1)])
+            .constraints([
+                Constraint::Length(3),
+                Constraint::Min(1),
+                Constraint::Length(1),
+            ])
             .split(frame.area());
 
         render_tabs(self, frame, chunks[0]);
+        render_info(self, frame, chunks[2]);
 
         match self.current_screen {
             Screens::Pomodoro => render_pomodoro(self, frame, chunks[1]),
             Screens::Settings => render_settings(self, frame, chunks[1]),
             Screens::Quit => render_quit(frame),
-            Screens::Stats => {},
+            Screens::Stats => {}
         }
     }
 

@@ -1,8 +1,12 @@
 use ratatui::{
-    Frame, layout::{Alignment, Rect}, style::{Style, Stylize}, symbols, widgets::{Block, BorderType, Borders, Tabs}
+    layout::{Alignment, Rect},
+    style::{Style, Stylize},
+    symbols,
+    widgets::{Block, BorderType, Borders, Tabs},
+    Frame,
 };
 
-use crate::{app::App};
+use crate::app::App;
 
 pub fn render_settings(pomodoro: &App, frame: &mut Frame, chunks: Rect) {
     let screen_block = Block::default()

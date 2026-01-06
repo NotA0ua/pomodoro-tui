@@ -1,4 +1,4 @@
-use ratatui::{Frame, layout::{Constraint, Layout, Rect}, style::{Color, Style}, widgets::{Block, BorderType, Borders, Tabs}};
+use ratatui::{Frame, layout::{Constraint, Layout, Rect}, style::{Color, Modifier, Style}, widgets::{Block, BorderType, Borders, Tabs}};
 use strum::IntoEnumIterator;
 
 use crate::{app::App, enums::screens::Screens};
@@ -25,7 +25,7 @@ pub fn render_tabs(pomodoro: &App, frame: &mut Frame, chunks: Rect) {
         .block(tabs_block)
         .style(Style::default())
         .highlight_style(
-            Style::default().fg(Color::Red), // .bg(Color::White)
+            Style::default().fg(Color::Red).add_modifier(Modifier::UNDERLINED), // .bg(Color::White)
         )
         .select(pomodoro.current_screen.clone() as usize)
         .divider("")
