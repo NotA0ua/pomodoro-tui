@@ -11,9 +11,9 @@ use ratatui::{
 
 pub mod app;
 pub mod enums;
-pub mod sound;
+pub mod update;
+pub mod utils;
 pub mod ui;
-pub mod screens;
 
 fn main() -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;

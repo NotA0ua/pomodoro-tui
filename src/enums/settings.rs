@@ -1,6 +1,6 @@
 use strum::{Display, EnumCount, EnumIter};
 
-#[derive(Display, EnumIter, EnumCount)]
+#[derive(Display, EnumIter, EnumCount, PartialEq, Eq)]
 pub enum Settings {
     #[strum(to_string = "Pomodoro Time")]
     PomodoroSeconds,
@@ -10,4 +10,8 @@ pub enum Settings {
     LongBreakSeconds,
     #[strum(to_string = "Short Before Long")]
     ShortBreaksBeforeLong,
+    #[strum(to_string = "Pomodoro Sound")]
+    PomodoroSound,
+    #[strum(to_string = "Autostart")]
+    Autostart,
 }

@@ -2,9 +2,9 @@ use ratatui::{
     Frame, style::{Color, Style}, text::{Line, Text}, widgets::{Block, Borders, Paragraph}
 };
 
-use crate::ui::centered_rect;
+use crate::utils::center::centered_rect;
 
-pub fn render_quit (frame: &mut Frame) {
+pub fn render_quit(frame: &mut Frame) {
     let screen_block = Block::default()
         .borders(Borders::NONE)
         .style(Style::default());

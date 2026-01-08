@@ -5,23 +5,17 @@ use std::{
 
 use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout},
     prelude::Backend,
-    style::{Color, Modifier, Style, Stylize},
-    symbols,
-    text::{Line, Text},
-    widgets::{Block, BorderType, Borders, Paragraph, Tabs},
     Frame, Terminal,
 };
-use strum::IntoEnumIterator;
 
 use crate::{
     enums::{pomodoros::Pomodoros, screens::Screens, settings::Settings, time::Time},
-    screens::{
-        info_screen::render_info, pomodoro_screen::render_pomodoro, quit_screen::render_quit,
-        settings_screen::render_settings, tabs_screen::render_tabs,
+    ui::{
+        info::render_info, pomodoro::render_pomodoro, quit::render_quit, settings::SettingsUI, tabs::render_tabs,
     },
-    sound::play_timer_sound,
+    utils::sound::play_timer_sound,
 };
 
 pub struct App {
@@ -32,7 +26,7 @@ pub struct App {
     pub last_screen: Screens,
 
     pub current_type: Pomodoros,
-    pub current_setting: Settings,
+    pub current_settings: Settings,
 
     pub pomodoro_seconds: usize,
     pub short_break_seconds: usize,
@@ -66,7 +60,7 @@ impl App {
             current_screen: Screens::Pomodoro,
             last_screen: Screens::Pomodoro,
             current_type: Pomodoros::Pomodoro,
-            current_setting: Settings::PomodoroSeconds,
+            current_settings: Settings::PomodoroSeconds,
             pomodoro_seconds: pomodoro_time.as_seconds(),
             short_break_seconds: short_break_time.as_seconds(),
             long_break_seconds: long_break_time.as_seconds(),
@@ -149,7 +143,7 @@ impl App {
 
         match self.current_screen {
             Screens::Pomodoro => render_pomodoro(self, frame, chunks[1]),
-            Screens::Settings => render_settings(self, frame, chunks[1]),
+            Screens::Settings => SettingsUI::render(self, frame, chunks[1]),
             Screens::Quit => render_quit(frame),
             Screens::Stats => {}
         }
@@ -166,8 +160,8 @@ impl App {
                     self.pomdoros += 1;
                     play_timer_sound();
 
-                    if (self.short_breaks % (self.short_breaks_before_long + 1)) == 0
-                        && self.short_breaks != 0
+                    if ((self.short_breaks % (self.short_breaks_before_long)) == 0)
+                        && (self.short_breaks != 0)
                     {
                         self.current_type = Pomodoros::LongBreak;
                         return;
