@@ -1,19 +1,71 @@
 use ratatui::{
+    crossterm::event::{KeyCode, KeyModifiers},
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Style, Stylize},
     widgets::{Block, BorderType, Borders},
     Frame,
 };
-use strum::IntoEnumIterator;
+use strum::{EnumCount, IntoEnumIterator};
 
-use crate::{app::App, enums::settings::Settings};
+use crate::{app::App, enums::settings::Setting};
 
 const COLS: usize = 2;
 const ROWS: usize = 3;
 
-pub struct SettingsUI;
+pub struct Settings;
 
-impl SettingsUI {
+impl Settings {
+    pub fn fetch_keys(pomodoro: &mut App, key: KeyCode, modifier: KeyModifiers) {
+        match modifier {
+            KeyModifiers::CONTROL => match key {
+                KeyCode::Left => {
+                    pomodoro.current_setting = Setting::iter()
+                        .nth(if pomodoro.current_setting as usize == 0 {
+                            Setting::COUNT - 1
+                        } else {
+                            pomodoro.current_setting as usize - 1
+                        })
+                        .unwrap();
+                }
+                KeyCode::Right => {
+                    pomodoro.current_setting = Setting::iter()
+                        .nth(
+                            if (pomodoro.current_setting as usize) < (Setting::COUNT - 1) {
+                                pomodoro.current_setting as usize + 1
+                            } else {
+                                0
+                            },
+                        )
+                        .unwrap();
+                }
+                _ => {}
+            },
+            _ => match key {
+                KeyCode::Left => match pomodoro.current_setting {
+                    Setting::PomodoroTime | Setting::ShortBreakTime | Setting::LongBreakTime => {
+                        if pomodoro.current_setting_index == 0 {
+                            pomodoro.current_setting_index = 2;
+                        } else {
+                            pomodoro.current_setting_index -= 1;
+                        }
+                    }
+                    _ => {}
+                },
+                KeyCode::Right => match pomodoro.current_setting {
+                    Setting::PomodoroTime | Setting::ShortBreakTime | Setting::LongBreakTime => {
+                        if pomodoro.current_setting_index == 2 {
+                            pomodoro.current_setting_index = 0;
+                        } else {
+                            pomodoro.current_setting_index += 1;
+                        }
+                    }
+                    _ => {}
+                },
+                _ => {}
+            },
+        };
+    }
+
     pub fn render(pomodoro: &mut App, frame: &mut Frame, chunks: Rect) {
         let screen_block = Block::default()
             .title("Settings")
@@ -27,13 +79,13 @@ impl SettingsUI {
 
         let layout = Self::create_layout(inner_area);
 
-        for (i, settings) in Settings::iter().enumerate() {
+        for (i, settings) in Setting::iter().enumerate() {
             Self::render_settings(
                 pomodoro,
                 frame,
                 layout[i],
                 &settings,
-                pomodoro.current_settings == settings,
+                pomodoro.current_setting == settings,
             );
         }
     }
@@ -60,7 +112,7 @@ impl SettingsUI {
         pomodoro: &mut App,
         frame: &mut Frame,
         area: Rect,
-        settings: &Settings,
+        settings: &Setting,
         is_selected: bool,
     ) {
         let style = if is_selected {
@@ -81,22 +133,22 @@ impl SettingsUI {
         frame.render_widget(settings_block, area);
     }
 
-    fn render_menu(pomodoro: &mut App, area: Rect, settings: &Settings) {
+    fn render_menu(pomodoro: &mut App, area: Rect, settings: &Setting) {
         match settings {
-            Settings::PomodoroSeconds => Self::render_time_menu(area, pomodoro.pomodoro_seconds),
-            Settings::ShortBreakSeconds => {
-                Self::render_time_menu(area, pomodoro.short_break_seconds)
-            }
-            Settings::LongBreakSeconds => Self::render_time_menu(area, pomodoro.long_break_seconds),
-            Settings::ShortBreaksBeforeLong => {
-                Self::render_count_menu(area, pomodoro.short_breaks_before_long)
-            }
-            Settings::PomodoroSound => {}
-            Settings::Autostart => {}
+            Setting::PomodoroTime => Self::render_time_menu(pomodoro, area),
+            Setting::ShortBreakTime => Self::render_time_menu(pomodoro, area),
+            Setting::LongBreakTime => Self::render_time_menu(pomodoro, area),
+            Setting::ShortBreaksBeforeLong => Self::render_count_menu(pomodoro, area),
+            Setting::PomodoroSound => Self::render_dropdown_menu(pomodoro, area),
+            Setting::Autostart => Self::render_toggle_menu(pomodoro, area),
         }
     }
 
-    fn render_time_menu(area: Rect, seconds: usize) {}
+    fn render_time_menu(pomodoro: &mut App, area: Rect) {}
 
-    fn render_count_menu(area: Rect, count: usize) {}
+    fn render_count_menu(pomodoro: &mut App, area: Rect) {}
+
+    fn render_toggle_menu(pomodoro: &mut App, area: Rect) {}
+
+    fn render_dropdown_menu(pomodoro: &mut App, area: Rect) {}
 }

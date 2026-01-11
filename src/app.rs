@@ -11,9 +11,9 @@ use ratatui::{
 };
 
 use crate::{
-    enums::{pomodoros::Pomodoros, screens::Screens, settings::Settings, time::Time},
+    enums::{pomodoros::Pomodoros, screens::Screens, settings::Setting, time::Time},
     ui::{
-        info::render_info, pomodoro::render_pomodoro, quit::render_quit, settings::SettingsUI, tabs::render_tabs,
+        info::render_info, pomodoro::render_pomodoro, quit::render_quit, settings::Settings, tabs::render_tabs
     },
     utils::sound::play_timer_sound,
 };
@@ -26,7 +26,8 @@ pub struct App {
     pub last_screen: Screens,
 
     pub current_type: Pomodoros,
-    pub current_settings: Settings,
+    pub current_setting: Setting,
+    pub current_setting_index: usize,
 
     pub pomodoro_seconds: usize,
     pub short_break_seconds: usize,
@@ -60,7 +61,8 @@ impl App {
             current_screen: Screens::Pomodoro,
             last_screen: Screens::Pomodoro,
             current_type: Pomodoros::Pomodoro,
-            current_settings: Settings::PomodoroSeconds,
+            current_setting: Setting::PomodoroTime,
+            current_setting_index: 0,
             pomodoro_seconds: pomodoro_time.as_seconds(),
             short_break_seconds: short_break_time.as_seconds(),
             long_break_seconds: long_break_time.as_seconds(),
@@ -121,9 +123,10 @@ impl App {
                 }
                 KeyCode::BackTab => {
                     self.current_screen = self.current_screen.previous();
-                }
+                },
                 _ => {}
             }
+            Settings::fetch_keys(self, key.code, key.modifiers);
         }
         Ok(())
     }
@@ -143,7 +146,7 @@ impl App {
 
         match self.current_screen {
             Screens::Pomodoro => render_pomodoro(self, frame, chunks[1]),
-            Screens::Settings => SettingsUI::render(self, frame, chunks[1]),
+            Screens::Settings => Settings::render(self, frame, chunks[1]),
             Screens::Quit => render_quit(frame),
             Screens::Stats => {}
         }
